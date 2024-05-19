@@ -7,7 +7,7 @@
 #include <string>
 #include <SDL.h>
 #include <memory>
-
+#include "enemy.h"
 class MobObject : public TestObject {
 public:
     static std::vector<MobObject*> registry;
@@ -58,6 +58,8 @@ public:
     void attack();
     void update(double deltaTime) override;
     void render() override;
+    void attackMelee();
+    void granade();
 
 };
 

@@ -12,6 +12,9 @@
 #include "Inventory.h"
 #include "PauseMenu.h"
 #include "Platform.h"
+#include "enemy.h"
+#include <memory>
+
 
 SDL_Renderer *Game::renderer = nullptr;
 MobObject* Game::player = nullptr;
@@ -30,6 +33,13 @@ bool isPaused = false;
 bool running = true;
 bool dead = false;
 
+Mix_Chunk* stepSound = nullptr;
+int stepChannel = -1;
+Mix_Music* Game::backgroundMusic = nullptr;
+
+std::unique_ptr<Enemy> enemy;
+std::unique_ptr<Enemy> Game::enemy = nullptr;
+
 bool Game::initialize() {
     renderer = SDL_CreateRenderer(Window::getWindow(), -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
@@ -46,11 +56,27 @@ bool Game::initialize() {
     }
     isPaused = false;
 
-    auto spikes = new TestObject("spikes",0, 0, ResourceManager::loadTexture("spikes.png"),100, 29);
-    spikes->lockInPlace(0, 0);
+    auto spikes = new TestObject("spikes",300, 0, ResourceManager::loadTexture("spikes.png"),100, 29);
+    spikes->lockInPlace(300, 0);
     new TestObject("dupa" , -200, 200, ResourceManager::loadTexture("imperator.png"),29,29+40);
     player = new MobObject("Player", -100, 200, ResourceManager::loadTexture("anim.png"), 8, 29, 12, 3);
     Environment::init();
+    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0){
+        std::cerr << "SDL_mixer could not initialize!" << Mix_GetError() << std::endl;
+    }
+    stepSound = ResourceManager::loadSound("step.wav");
+    if (!stepSound){
+        std::cerr << "Failed to load step sound" << Mix_GetError() << std::endl;
+        return false;
+    }
+    backgroundMusic = ResourceManager::loadMusic("music.mp3");
+    if (!backgroundMusic) {
+        std::cerr << "Failed to load background music: " << Mix_GetError() << std::endl;
+        return false;
+    }
+    if (backgroundMusic) {
+        Mix_PlayMusic(backgroundMusic, -1);  // Odtwarzaj muzykę w pętli
+    }
     return true;
 }
 
@@ -63,6 +89,7 @@ float generateRandom(double min, double max) {
 
 void Game::update(double deltaTime, bool pause1) {
     Mouse::update();
+    bool isMoving = false;
     const Uint8 *keystates = SDL_GetKeyboardState(nullptr);
     if (!pause1) {
         CollisionManager::checkCollisions(deltaTime);
@@ -80,10 +107,12 @@ void Game::update(double deltaTime, bool pause1) {
 
         if (keystates[SDL_SCANCODE_A]) {
             player->moveLeft();
+            isMoving = true;
         }
 
         if (keystates[SDL_SCANCODE_D]) {
             player->moveRight();
+            isMoving = true;
         }
 
         if (keystates[SDL_SCANCODE_SPACE] && !player->isJumping) {
@@ -112,6 +141,33 @@ void Game::update(double deltaTime, bool pause1) {
         }
         for (auto obj: GameObject::registry) {
             obj->update(deltaTime);
+        }
+
+        if (keystates[SDL_SCANCODE_F]){
+            player->attackMelee();
+        }
+
+        if (keystates[SDL_SCANCODE_G]){
+            player->granade();
+            player->getDamage(5);
+        }
+
+        if (keystates[SDL_SCANCODE_H]){
+            if (!enemy) {
+                int x = rand() % 300;
+                enemy = std::make_unique<Enemy>("enemy", 0, 0, ResourceManager::loadTexture("zombie.png"), 20, 20, 1, 1);
+                enemy->spawn(x, 20, "zombie.png");
+            }
+        }
+        if(isMoving&&!player->isJumping){
+            if (stepChannel == -1){
+                stepChannel = Mix_PlayChannel(-1, stepSound, -1);
+            }
+        } else {
+            if (stepChannel != -1){
+                Mix_HaltChannel(stepChannel);
+                stepChannel = -1;
+            }
         }
         Camera::follow(player->getX(), player->getY(), deltaTime);
     } else {
@@ -160,8 +216,13 @@ void Game::render() {
     }
 
     if(dead){
-        if(exit== nullptr)exit = new Button("exitButton", 0,0, ResourceManager::loadTexture("exit.png"));
-        exit->setPosition(Camera::x-10, Camera::y-10);
+        if(exit== nullptr) {
+            exit = new Button("exitButton", 0, 0, ResourceManager::loadTexture("exit.png"));
+            pause = new PauseMenu("exit menu", 0, 0, ResourceManager::loadTexture("endGame.png"));
+        }
+        pause->setPosition(Camera::x-100, Camera::y+60);
+        pause->render();
+        exit->setPosition(Camera::x-20, Camera::y+10);
         exit->render();
     }
 
@@ -205,7 +266,7 @@ void Game::render() {
     std::string currentPositionText55 = "Mouse2: " + std::to_string(TestObject::registry.size()) + ", " + std::to_string(Mouse::getScreenY());
     //GUI::drawText(0, 40, currentPositionText55);
     std::string currentPositionText4 = "FPS: " + std::to_string(fps);
-    GUI::drawText(0,40, "dead: " + std::to_string(dead));
+    //GUI::drawText(0,40, "dead: " + std::to_string(dead));
     GUI::drawText(0, 0, currentPositionText4);
     GUI::drawText(450, 30, "Imperator: " + std::to_string(inv->getImperatorAmount()));
     GUI::drawText(450, 50, "Special: " + std::to_string(inv->getSpecialAmount()));
@@ -248,11 +309,21 @@ void Game::loop() {
 
 void Game::cleanUp() {
     ResourceManager::shutdown();
-
     if (renderer) {
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
     }
+    if (stepSound){
+        Mix_FreeChunk(stepSound);
+        stepSound = nullptr;
+    }
+    if (backgroundMusic) {
+        Mix_HaltMusic();
+        Mix_FreeMusic(backgroundMusic);
+        backgroundMusic = nullptr;
+    }
+    Mix_CloseAudio();
+    Window::cleanUp();
 }
 
 SDL_Renderer *Game::getRenderer() {

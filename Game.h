@@ -6,10 +6,16 @@
 #include "MobObject.h"
 #include "Inventory.h"
 #include "PauseMenu.h"
+#include <SDL_mixer.h>
+#include "enemy.h"
+
+extern Mix_Chunk* stepSound;
+extern int stepChannel;
 
 class Game {
 public:
     static MobObject* player;
+    static std::unique_ptr<Enemy> enemy;
     static unsigned int fps;
     static void hitPlayer(int damage =1);
     static bool initialize();
@@ -68,7 +74,7 @@ public:
 
     static double playerTimeMultiplier;
     static double worldTimeMultiplier;
-
+    static Mix_Music* backgroundMusic;
 private:
     static SDL_Renderer* renderer;
 

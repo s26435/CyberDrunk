@@ -80,6 +80,8 @@ public:
     void jump();
     void update(double deltaTime) override;
     void render() override;
+    void setTexture(SDL_Texture* texture);
+    void setPosition(double x, double y);
 
     std::unique_ptr<BoxCollider> collider;
 };

@@ -129,3 +129,11 @@ void TestObject::render() {
       //SDL_RenderDrawLine(Game::getRenderer(), Mouse::gameToScreen(x_pos, y_pos).first, Mouse::gameToScreen(x_pos, y_pos).second - 12, Mouse::getScreenX(),  Mouse::getScreenY());
   }
 }
+
+void TestObject::setTexture(SDL_Texture* texture) {
+    this->texture = texture;
+}
+void TestObject::setPosition(double x, double y) {
+    this->x_pos = x;
+    this->y_pos = y;
+}

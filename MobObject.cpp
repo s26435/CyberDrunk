@@ -1,5 +1,8 @@
 #include "MobObject.h"
 #include "Mouse.h"
+#include <algorithm>
+#include <cmath>
+#include <iostream>
 
 std::vector<MobObject *> MobObject::registry;
 
@@ -62,6 +65,39 @@ void MobObject::attack()
     }
 }
 
+double calculateDistance(double x1, double y1, double x2, double y2) {
+    double dx = x2 - x1;
+    double dy = y2 - y1;
+    return sqrt(dx * dx + dy * dy);
+}
+
+void MobObject::attackMelee() {
+    // logika później
+    Mix_Chunk* soundMelee = nullptr;
+    soundMelee = ResourceManager::loadSound("walkaWrecz1.mp3");
+    if (soundMelee != nullptr) {
+        Mix_PlayChannel(-1, soundMelee, 0);
+    }
+    if (Game::enemy) {
+        double distance = calculateDistance(this->x_pos, this->y_pos, Game::enemy->getX(), Game::enemy->getY());
+        double meleeRange = 20.0; // Zakładany zasięg walki wręcz
+
+        if (distance <= meleeRange) {
+            Game::enemy->despawn();
+            Game::enemy.reset();
+            std::cout << "Enemy despawned" << std::endl;
+        } else {
+            std::cout << "Enemy is out of range: " << distance << std::endl;
+        }
+    }
+}
+void MobObject::granade() {
+    Mix_Chunk *soundGranate = nullptr;
+    soundGranate = ResourceManager::loadSound("granatRzutEksplozja.mp3");
+    if (soundGranate != nullptr) {
+        Mix_PlayChannel(-1, soundGranate, 0);
+    }
+}
 void MobObject::update(double deltaTime) {
     TestObject::update(deltaTime);
     deltaTime *= timeMultiplier;
